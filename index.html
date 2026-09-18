@@ -202,7 +202,7 @@ let VIEW="home",R=null,records=[];
 function nav(v){VIEW=v;render();window.scrollTo(0,0);}
 function newRecord(type){R={id:uid(),type,event:SET.event,venue:SET.venue,operator:SET.operator,device:SET.device,createdAt:new Date().toISOString(),
   first:"",last:"",dob:"",expiry:"",number:"",state:"",cls:"",address:"",phone:"",email:"",
-  licenceImg:null,photo:null,sig:null,ocrText:"",guardianName:"",guardianPhone:"",guardianSig:null,
+  licenceImg:null,licenceBack:null,photo:null,sig:null,ocrText:"",guardianName:"",guardianPhone:"",guardianSig:null,
   waiverVersion:SET.waiverVersion||"v1",waiverText:SET.waiver,signedAt:null,result:"",flags:[],synced:false};}
 
 /* ================= render ================= */
@@ -231,7 +231,7 @@ async function render(){
     <div class="list">${rows.map(r=>`<button class="rec" onclick="openRec('${r.id}')">${r.photo?`<img class="th" src="${r.photo}">`:`<span class="th"></span>`}<div><div class="n">${esc(r.first)} ${esc(r.last)}</div><div class="m">${esc(r.number||"—")} · ${esc(r.state||"")} · ${fmtDT(r.createdAt)}</div></div><span class="tag ${r.type==="passenger"?"p":""}">${r.type}</span>${r.result==="refused"?`<span class="tag" style="background:var(--nobg);color:var(--no)">refused</span>`:""}${!r.synced&&SET.sbUrl?`<span class="tag q">queued</span>`:""}</button>`).join("")||`<p class="hint">No records yet.</p>`}</div>
     <p class="hint">${rows.length} of ${records.length}</p>`;}
   else if(VIEW==="rec"){const r=R;app.innerHTML=`<div class="card"><h2>${esc(r.first)} ${esc(r.last)}</h2><p class="hint">${r.type} · ${fmtDT(r.createdAt)} · ${esc(r.operator)} / ${esc(r.device)} · ${r.synced?"synced":"on device"}</p>
-    <div class="row">${r.photo?`<img src="${r.photo}" style="width:100%;border-radius:8px">`:""}${r.licenceImg?`<img src="${r.licenceImg}" style="width:100%;border-radius:8px">`:""}</div>
+    <div class="row">${r.photo?`<img src="${r.photo}" style="width:100%;border-radius:8px">`:""}${r.licenceImg?`<img src="${r.licenceImg}" style="width:100%;border-radius:8px">`:""}</div>${r.licenceBack?`<img src="${r.licenceBack}" style="width:100%;border-radius:8px;margin-top:10px">`:""}
     <div class="kv" style="margin-top:12px"><span>Licence</span><b>${esc(r.number)} · ${esc(r.state)} · ${esc(r.cls)}</b><span>DOB</span><b>${esc(r.dob)} (${age(r.dob)??"?"})</b><span>Expiry</span><b>${esc(r.expiry)}</b><span>Address</span><b>${esc(r.address)}</b><span>Mobile</span><b>${esc(r.phone)}</b><span>Email</span><b>${esc(r.email)}</b>${r.guardianName?`<span>Guardian</span><b>${esc(r.guardianName)} ${esc(r.guardianPhone)}</b>`:""}<span>Waiver</span><b>${esc(r.waiverVersion)} · ${r.signedAt?fmtDT(r.signedAt):"not signed"}</b><span>Result</span><b>${esc(r.result)}</b><span>Record</span><b class="mono">${r.id}</b></div>
     ${r.sig?`<p class="hint" style="margin-top:12px">Signature</p><img src="${r.sig}" style="max-width:260px;border:1px solid var(--line);border-radius:6px">`:""}</div>
     <div class="foot"><button class="btn ghost" onclick="nav('records')">Back</button><button class="btn" onclick="viewPDF('${r.id}')">Open PDF</button></div>
@@ -250,10 +250,14 @@ let STEP=0; // 0 licence photo, 1 confirm, 2 contact(+guardian), 3 photo, 4 waiv
 function start(type){if(!SET.event){toast("Set the event in Setup first");nav("setup");return;}newRecord(type);STEP=0;getWorker();nav("cap");}
 function stepbar(n,t){const p=[10,30,50,70,90,100][n];return `<div class="step"><span>${R.type==="passenger"?"PASSENGER":"DRIVER"} · ${t}</span><span>${n+1} of 5</span></div><div class="prog"><i style="width:${p}%"></i></div>`;}
 function renderCapture(){const app=$("#app");
-  if(STEP===0)app.innerHTML=stepbar(0,"Licence")+`<div class="imgbox" id="licbox">${R.licenceImg?`<img src="${R.licenceImg}">`:`<div class="ret"></div><div>Photograph the driver licence<br><small>card or phone screen · fill the frame · no glare</small></div>`}</div>
-    <div class="ocr" id="ocr" style="display:none"><span>Reading…</span><div class="bar" id="ocrbar"><i></i></div></div>
+  if(STEP===0)app.innerHTML=stepbar(0,"Licence")+`<p class="hint" style="margin:0 0 6px;font-weight:700">FRONT of licence</p><div class="imgbox" id="licbox">${R.licenceImg?`<img src="${R.licenceImg}">`:`<div class="ret"></div><div>Photograph the front of the licence<br><small>card or phone screen · fill the frame · no glare</small></div>`}</div>
     <input type="file" accept="image/*" capture="environment" id="licfile" style="display:none">
-    <div class="big"><button class="btn chrome" onclick="$('#licfile').click()">${R.licenceImg?"Retake":"Open camera"}</button><button class="btn ghost" onclick="STEP=1;render()">Skip — type it in</button></div>
+    <input type="file" accept="image/*" capture="environment" id="backfile" style="display:none">
+    ${R.licenceImg?`<div class="big" style="margin-bottom:0"><button class="btn ghost" onclick="$('#licfile').click()">Retake front</button></div>
+    <p class="hint" style="margin:14px 0 6px;font-weight:700">BACK of licence <span style="font-weight:500">— QLD cards have the address on the back</span></p><div class="imgbox" id="backbox" style="aspect-ratio:16/8">${R.licenceBack?`<img src="${R.licenceBack}">`:`<div>Optional</div>`}</div>
+    <div class="ocr" id="ocr" style="display:none"><span>Reading…</span><div class="bar" id="ocrbar"><i></i></div></div>
+    <div class="big"><button class="btn ghost" onclick="$('#backfile').click()">${R.licenceBack?"Retake back":"Photograph the back"}</button><button class="btn chrome" onclick="readNow()">Read licence${R.licenceBack?" (front + back)":""}</button></div>`
+    :`<div class="ocr" id="ocr" style="display:none"><span>Reading…</span><div class="bar" id="ocrbar"><i></i></div></div><div class="big"><button class="btn chrome" onclick="$('#licfile').click()">Open camera</button><button class="btn ghost" onclick="STEP=1;render()">Skip — type it in</button></div>`}
     <div class="foot"><button class="btn ghost" onclick="cancelCap()">Cancel</button></div>`;
   else if(STEP===1){const a=age(R.dob);const fl=checks();app.innerHTML=stepbar(1,"Check the details")+`<div class="card"><p class="hint" style="margin:0 0 6px">Check every field against the licence. Fix anything the reader got wrong.</p>
     <div class="row"><div><label>First name(s)</label><input id="f_first" value="${esc(R.first)}" autocapitalize="characters"></div><div><label>Last name</label><input id="f_last" value="${esc(R.last)}" autocapitalize="characters"></div></div>
@@ -269,7 +273,7 @@ function renderCapture(){const app=$("#app");
     ${needG?`<div class="alert warn">Under ${SET.guardianUnder} — parent or guardian must be present and sign.</div><label>Parent / guardian name</label><input id="f_gname" value="${esc(R.guardianName)}"><label>Parent / guardian mobile</label><input id="f_gphone" type="tel" value="${esc(R.guardianPhone)}">`:""}
     </div><div class="foot"><button class="btn ghost" onclick="STEP=1;render()">Back</button><button class="btn chrome" onclick="saveContact()">Continue</button></div>`;}
   else if(STEP===3)app.innerHTML=stepbar(3,"Photo")+`<div class="imgbox face">${R.photo?`<img src="${R.photo}">`:"Photo of the person"}</div>
-    <input type="file" accept="image/*" capture="user" id="facefile" style="display:none">
+    <input type="file" accept="image/*" capture="environment" id="facefile" style="display:none">
     <div class="big"><button class="btn chrome" onclick="$('#facefile').click()">${R.photo?"Retake":"Take photo"}</button></div>
     <div class="foot"><button class="btn ghost" onclick="STEP=2;render()">Back</button><button class="btn" ${R.photo||R.licenceImg?"":"disabled"} onclick="STEP=4;render()">Continue</button></div>
     <p class="hint">${R.licenceImg?"Licence image is kept, so this is optional.":"No licence image — a photo is required."}</p>`;
@@ -283,13 +287,15 @@ function renderCapture(){const app=$("#app");
     <div class="big"><button class="btn chrome" onclick="start('${R.type}')">Next ${R.type}</button><button class="btn ghost" onclick="nav('home')">Home</button></div>`;}
   setTimeout(wireCapture,0);
 }
-function wireCapture(){const lf=$("#licfile");if(lf)lf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceImg=await fileToImage(f,2200);$("#licbox").innerHTML=`<img src="${R.licenceImg}">`;$("#ocr").style.display="flex";
-    let cloud=null;
-    if(navigator.onLine){try{const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),25000);const rs=await fetch("/api/ocr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:R.licenceImg}),signal:ctl.signal});clearTimeout(tm);const j=await rs.json();if(j.ok&&j.fields)cloud=j;else console.warn("cloud reader",j.error);}catch(e){console.warn("cloud reader",e);}}
-    if(cloud){const f=cloud.fields;["first","last","dob","expiry","number","state","cls","address"].forEach(k=>{if(f[k])R[k]=String(f[k]).trim();});R.first=R.first.toUpperCase();R.last=R.last.toUpperCase();R.ocrText="RACERS reader ("+(f.confidence||"?")+" confidence"+(f.digital?", digital licence":"")+")"+(f.notes?"\nCheck: "+f.notes:"");R.ocrSource="cloud";if(f.confidence==="low")toast("Low confidence read — check every field",4000);else if(f.notes)toast("Check: "+f.notes,4000);}
-    else{try{const text=await readLicence(R.licenceImg);R.ocrText=text;R.ocrSource="device";Object.assign(R,Object.fromEntries(Object.entries(parseLicence(text)).filter(([k,v])=>v)));toast(navigator.onLine?"Cloud reader unavailable — used on-device reader, check every field":"Offline — used on-device reader, check every field",4000);}catch(err){console.error(err);toast("Reader failed — type the details in");}}
-    STEP=1;render();};
+function wireCapture(){const lf=$("#licfile");if(lf)lf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceImg=await fileToImage(f,2200);render();};
+  const bf=$("#backfile");if(bf)bf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceBack=await fileToImage(f,2200);render();};
   const ff=$("#facefile");if(ff)ff.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.photo=await fileToImage(f,900);render();};}
+async function readNow(){if(!R.licenceImg)return;document.querySelectorAll(".big .btn").forEach(b=>b.disabled=true);$("#ocr").style.display="flex";
+  let cloud=null;
+  if(navigator.onLine){try{const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),30000);const rs=await fetch("/api/ocr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:R.licenceImg,back:R.licenceBack||null}),signal:ctl.signal});clearTimeout(tm);const j=await rs.json();if(j.ok&&j.fields)cloud=j;else console.warn("cloud reader",j.error);}catch(e){console.warn("cloud reader",e);}}
+  if(cloud){const f=cloud.fields;["first","last","dob","expiry","number","state","cls","address"].forEach(k=>{if(f[k])R[k]=String(f[k]).trim();});R.first=R.first.toUpperCase();R.last=R.last.toUpperCase();R.ocrText="RACERS reader ("+(f.confidence||"?")+" confidence"+(f.digital?", digital licence":"")+")"+(f.notes?"\nCheck: "+f.notes:"");R.ocrSource="cloud";if(f.confidence==="low")toast("Low confidence read — check every field",4000);else if(f.notes)toast("Check: "+f.notes,4000);}
+  else{try{const text=await readLicence(R.licenceImg);R.ocrText=text;R.ocrSource="device";Object.assign(R,Object.fromEntries(Object.entries(parseLicence(text)).filter(([k,v])=>v)));toast(navigator.onLine?"Cloud reader unavailable — used on-device reader, check every field":"Offline — used on-device reader, check every field",4000);}catch(err){console.error(err);toast("Reader failed — type the details in");}}
+  STEP=1;render();}
 function cancelCap(){if(confirm("Cancel this sign-on?"))nav("home");}
 function checks(){const fl=[];const a=age(R.dob);const now=new Date();
   if(!R.number)fl.push({k:"warn",t:"No licence number"});
@@ -311,7 +317,7 @@ function initSig(id){const c=document.getElementById(id);if(!c)return;const dpr=
   PADS[id]={c,x,get used(){return used;},reset(){used=false;}};}
 function clearSig(id){const p=PADS[id];if(!p)return;p.x.clearRect(0,0,p.c.width,p.c.height);p.reset();}
 async function finish(){const s=PADS.sig;if(!s||!s.used){toast("Signature required");return;}R.sig=s.c.toDataURL("image/png");const g=PADS.gsig;if(g){if(!g.used){toast("Guardian signature required");return;}R.guardianSig=g.c.toDataURL("image/png");}
-  if(!SET.keepLicenceImage)R.licenceImg=null;R.signedAt=new Date().toISOString();R.result="signed";R.waiverText=SET.waiver;R.waiverVersion=SET.waiverVersion||"v1";
+  if(!SET.keepLicenceImage){R.licenceImg=null;R.licenceBack=null;}R.signedAt=new Date().toISOString();R.result="signed";R.waiverText=SET.waiver;R.waiverVersion=SET.waiverVersion||"v1";
   await DB.put(R);STEP=5;render();sync();}
 
 /* ================= PDF ================= */
@@ -323,8 +329,8 @@ function buildPDF(r){const {jsPDF}=window.jspdf;const d=new jsPDF({unit:"mm",for
   const kv=[["Date of birth",r.dob+(age(r.dob)!==null?` (age ${age(r.dob)})`:"")],["Licence",`${r.number||"—"}  ${r.state||""}  ${r.cls?"class "+r.cls:""}`],["Licence expiry",r.expiry||"—"],["Address",r.address||"—"],["Mobile",r.phone||"—"],["Email",r.email||"—"],["Event / venue",`${r.event||""} · ${r.venue||""}`],["Signed",r.signedAt?fmtDT(r.signedAt):"NOT SIGNED — "+r.result],["Witnessed by",`${r.operator||"—"} · device ${r.device}`],["Waiver version",r.waiverVersion||"v1"]];
   if(r.guardianName)kv.push(["Parent / guardian",`${r.guardianName} ${r.guardianPhone||""}`]);
   kv.forEach(([k,v])=>{d.setTextColor(100);d.text(k,12,y);d.setTextColor(0);d.text(String(v),50,y);y+=5.5;});
-  let iy=32;if(r.photo){try{d.addImage(r.photo,"JPEG",150,iy,40,50);}catch(e){}iy+=54;}if(r.licenceImg){try{d.addImage(r.licenceImg,"JPEG",140,iy,58,36);}catch(e){}}
-  y=Math.max(y,iy+40)+4;d.setDrawColor(200);d.line(12,y,W-12,y);y+=6;
+  let iy=32;if(r.photo){try{d.addImage(r.photo,"JPEG",150,iy,40,50);}catch(e){}iy+=54;}if(r.licenceImg){try{d.addImage(r.licenceImg,"JPEG",140,iy,58,36);}catch(e){}iy+=40;}if(r.licenceBack){try{d.addImage(r.licenceBack,"JPEG",140,iy,58,36);}catch(e){}}
+  y=Math.max(y,iy+(r.licenceBack?40:40))+4;d.setDrawColor(200);d.line(12,y,W-12,y);y+=6;
   d.setFontSize(8.5);const lines=d.splitTextToSize(r.waiverText||"",W-24);lines.forEach(l=>{if(y>262){d.addPage();y=16;}d.text(l,12,y);y+=3.7;});
   y+=6;if(y>230){d.addPage();y=16;}
   d.setFontSize(10);d.text(`Signature: ${r.first} ${r.last}`,12,y);if(r.sig){try{d.addImage(r.sig,"PNG",12,y+2,70,26);}catch(e){}}
@@ -348,14 +354,15 @@ const SQL=`create table if not exists sign_ons (
   phone text, email text, guardian_name text, guardian_phone text,
   result text, signed_at timestamptz, waiver_version text, waiver_text text,
   operator text, device text, created_at timestamptz,
-  licence_img text, photo text, sig text, guardian_sig text, ocr_text text
+  licence_img text, licence_back text, photo text, sig text, guardian_sig text, ocr_text text
 );
+alter table sign_ons add column if not exists licence_back text;
 alter table sign_ons enable row level security;
 create policy "insert from devices" on sign_ons for insert to anon with check (true);
 -- reads only via service role / dashboard`;
 let syncing=false;
 async function sync(force){if(!SET.sbUrl||!SET.sbKey||!navigator.onLine||syncing)return;syncing=true;let n=0;
-  try{const rs=(await DB.all()).filter(r=>!r.synced);for(const r of rs){const body={id:r.id,type:r.type,event:r.event,venue:r.venue,first_name:r.first,last_name:r.last,dob:r.dob||null,licence_number:r.number,state:r.state,class:r.cls,expiry:r.expiry||null,address:r.address,phone:r.phone,email:r.email,guardian_name:r.guardianName,guardian_phone:r.guardianPhone,result:r.result,signed_at:r.signedAt,waiver_version:r.waiverVersion,waiver_text:r.waiverText,operator:r.operator,device:r.device,created_at:r.createdAt,licence_img:r.licenceImg,photo:r.photo,sig:r.sig,guardian_sig:r.guardianSig,ocr_text:r.ocrText};
+  try{const rs=(await DB.all()).filter(r=>!r.synced);for(const r of rs){const body={id:r.id,type:r.type,event:r.event,venue:r.venue,first_name:r.first,last_name:r.last,dob:r.dob||null,licence_number:r.number,state:r.state,class:r.cls,expiry:r.expiry||null,address:r.address,phone:r.phone,email:r.email,guardian_name:r.guardianName,guardian_phone:r.guardianPhone,result:r.result,signed_at:r.signedAt,waiver_version:r.waiverVersion,waiver_text:r.waiverText,operator:r.operator,device:r.device,created_at:r.createdAt,licence_img:r.licenceImg,licence_back:r.licenceBack,photo:r.photo,sig:r.sig,guardian_sig:r.guardianSig,ocr_text:r.ocrText};
       const res=await fetch(`${SET.sbUrl}/rest/v1/${SET.sbTable}`,{method:"POST",headers:{"Content-Type":"application/json",apikey:SET.sbKey,Authorization:"Bearer "+SET.sbKey,Prefer:"resolution=merge-duplicates"},body:JSON.stringify(body)});
       if(res.ok||res.status===409){r.synced=true;await DB.put(r);n++;}else{console.error("sync",res.status,await res.text());break;}}
     if(n||force)toast(n?`Synced ${n}`:"Nothing to sync");if(VIEW==="home"||VIEW==="records")render();}
