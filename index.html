@@ -146,6 +146,21 @@ function updateNet(){const n=$("#net");n.className="net"+(navigator.onLine?"":" 
 addEventListener("online",()=>{updateNet();sync();});addEventListener("offline",updateNet);
 
 /* ================= OCR ================= */
+// Make a high-contrast greyscale version of the licence photo for the reader.
+function preprocess(dataUrl){return new Promise(res=>{const im=new Image();im.onload=()=>{
+  const target=1800;const sc=target/Math.max(im.width,im.height);const c=document.createElement("canvas");c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);const x=c.getContext("2d");x.drawImage(im,0,0,c.width,c.height);
+  const d=x.getImageData(0,0,c.width,c.height),px=d.data,n=px.length/4;const g=new Uint8ClampedArray(n);
+  for(let i=0;i<n;i++)g[i]=(px[i*4]*0.299+px[i*4+1]*0.587+px[i*4+2]*0.114)|0;
+  // contrast stretch between 2nd and 98th percentile
+  const hist=new Uint32Array(256);for(let i=0;i<n;i++)hist[g[i]]++;let lo=0,hi=255,acc=0;for(let v=0;v<256;v++){acc+=hist[v];if(acc>n*0.02){lo=v;break;}}acc=0;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>n*0.02){hi=v;break;}}const rng=Math.max(1,hi-lo);
+  for(let i=0;i<n;i++){let v=((g[i]-lo)*255/rng);v=v<0?0:v>255?255:v;px[i*4]=px[i*4+1]=px[i*4+2]=v;}
+  x.putImageData(d,0,0);res(c.toDataURL("image/png"));};im.src=dataUrl;});}
+const score=t=>(t.match(/[A-Z0-9]/gi)||[]).length;
+async function readLicence(dataUrl){const w=await getWorker();const img=await preprocess(dataUrl);
+  await w.setParameters({tessedit_pageseg_mode:"6",preserve_interword_spaces:"1"});let best=(await w.recognize(img)).data.text||"";
+  if(score(best)<40){await w.setParameters({tessedit_pageseg_mode:"11"});const t=(await w.recognize(img)).data.text||"";if(score(t)>score(best))best=t;}
+  if(score(best)<40){await w.setParameters({tessedit_pageseg_mode:"4"});const t=(await w.recognize(dataUrl)).data.text||"";if(score(t)>score(best))best=t;}
+  return best;}
 let worker=null,workerReady=null;
 function getWorker(){if(!workerReady){workerReady=(async()=>{worker=await Tesseract.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text"){const b=$("#ocrbar i");if(b)b.style.width=Math.round(m.progress*100)+"%";}}});return worker;})();}return workerReady;}
 const MONTHS={JAN:1,FEB:2,MAR:3,APR:4,MAY:5,JUN:6,JUL:7,AUG:8,SEP:9,SEPT:9,OCT:10,NOV:11,DEC:12};
@@ -245,7 +260,7 @@ function renderCapture(){const app=$("#app");
     <div class="row"><div><label>Class</label><input id="f_cls" value="${esc(R.cls)}" placeholder="C / P / etc"></div><div><label>Age</label><input value="${a??""}" readonly></div></div>
     <label>Address</label><input id="f_addr" value="${esc(R.address)}">
     <div id="flags">${fl.map(f=>`<span class="flag ${f.k}">${f.t}</span>`).join("")}</div>
-    ${R.ocrText?`<details style="margin-top:10px"><summary class="hint">Raw text from the reader</summary><pre class="mono" style="white-space:pre-wrap">${esc(R.ocrText)}</pre></details>`:""}</div>
+    ${R.ocrText?`<details style="margin-top:10px" ${score(R.ocrText)<40?"open":""}><summary class="hint">Raw text from the reader</summary><pre class="mono" style="white-space:pre-wrap">${esc(R.ocrText)}</pre></details>`:""}</div>
     <div class="foot"><button class="btn ghost" onclick="STEP=0;render()">Back</button><button class="btn chrome" onclick="saveConfirm()">Confirm</button></div>`;}
   else if(STEP===2){const a=age(R.dob);const needG=a!==null&&a<SET.guardianUnder;app.innerHTML=stepbar(2,"Contact")+`<div class="card">
     <label>Mobile</label><input id="f_phone" type="tel" inputmode="tel" value="${esc(R.phone)}"><label>Email</label><input id="f_email" type="email" inputmode="email" value="${esc(R.email)}">
@@ -266,8 +281,8 @@ function renderCapture(){const app=$("#app");
     <div class="big"><button class="btn chrome" onclick="start('${R.type}')">Next ${R.type}</button><button class="btn ghost" onclick="nav('home')">Home</button></div>`;}
   setTimeout(wireCapture,0);
 }
-function wireCapture(){const lf=$("#licfile");if(lf)lf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceImg=await fileToImage(f,1600);$("#licbox").innerHTML=`<img src="${R.licenceImg}">`;$("#ocr").style.display="flex";
-    try{const w=await getWorker();const {data}=await w.recognize(R.licenceImg);R.ocrText=data.text;Object.assign(R,Object.fromEntries(Object.entries(parseLicence(data.text)).filter(([k,v])=>v)));}catch(err){console.error(err);toast("Reader failed — type the details in");}
+function wireCapture(){const lf=$("#licfile");if(lf)lf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceImg=await fileToImage(f,2200);$("#licbox").innerHTML=`<img src="${R.licenceImg}">`;$("#ocr").style.display="flex";
+    try{const text=await readLicence(R.licenceImg);R.ocrText=text;Object.assign(R,Object.fromEntries(Object.entries(parseLicence(text)).filter(([k,v])=>v)));if(score(text)<40)toast("Poor read — check every field, or retake flat with no glare",4000);}catch(err){console.error(err);toast("Reader failed — type the details in");}
     STEP=1;render();};
   const ff=$("#facefile");if(ff)ff.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.photo=await fileToImage(f,900);render();};}
 function cancelCap(){if(confirm("Cancel this sign-on?"))nav("home");}
