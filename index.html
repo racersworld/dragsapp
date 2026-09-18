@@ -213,13 +213,14 @@ async function render(){
     ${SET.event?"":`<div class="alert warn">Set the event name and operator in Setup before scanning.</div>`}
     <div class="big"><button class="btn chrome" onclick="start('driver')">Sign on a DRIVER</button><button class="btn" onclick="start('passenger')">Sign on a PASSENGER</button></div>
     <div class="card"><h2>How it works</h2><p class="hint">Photograph the driver licence → check the details the reader pulled off it → contact → photo → they sign on the screen → green light. Everything is saved on this phone and synced when there's signal. Works with a physical card or a digital licence on a phone screen.</p><p class="hint">Operator: <b>${esc(SET.operator||"—")}</b> · Device: <b>${esc(SET.device)}</b></p></div>`;}
-  else if(VIEW==="setup"){app.innerHTML=`<div class="card"><h2>Event</h2>
+  else if(VIEW==="setup"){setTimeout(ocrStatus,0);app.innerHTML=`<div class="card"><h2>Event</h2>
     <label>Event name</label><input id="s_event" value="${esc(SET.event)}" placeholder="Lakeside Drags">
     <label>Venue</label><input id="s_venue" value="${esc(SET.venue)}" placeholder="Lakeside Park">
     <div class="row"><div><label>Operator (you)</label><input id="s_op" value="${esc(SET.operator)}"></div><div><label>Device ID</label><input id="s_dev" value="${esc(SET.device)}"></div></div>
     <div class="row"><div><label>Passenger minimum age</label><input id="s_pmin" type="number" value="${SET.passengerMin}"></div><div><label>Guardian required under</label><input id="s_gu" type="number" value="${SET.guardianUnder}"></div></div>
     <label class="inline"><input type="checkbox" id="s_keep" ${SET.keepLicenceImage?"checked":""}>Keep the licence image on the record</label></div>
     <div class="card"><h2>Waiver</h2><label>Version label</label><input id="s_wv" value="${esc(SET.waiverVersion||"v1")}"><label>Text (shown to the person and printed on the PDF)</label><textarea id="s_waiver" rows="10">${esc(SET.waiver)}</textarea></div>
+    <div class="card"><h2>Licence reader</h2><p class="hint" id="ocrstat">Checking…</p></div>
     <div class="card"><h2>Sync (optional)</h2><p class="hint">Leave blank to keep everything on this device and export manually. With Supabase set, each record is posted to the table and marked synced.</p>
     <label>Supabase URL</label><input id="s_url" value="${esc(SET.sbUrl)}" placeholder="https://xxxx.supabase.co"><label>Anon key</label><input id="s_key" value="${esc(SET.sbKey)}"><label>Table</label><input id="s_tbl" value="${esc(SET.sbTable)}">
     <details style="margin-top:10px"><summary class="hint">SQL for the table</summary><pre class="mono" style="white-space:pre-wrap">${esc(SQL)}</pre></details></div>
@@ -238,6 +239,7 @@ async function render(){
   else if(VIEW==="cap"){renderCapture();}
   updateNet();
 }
+async function ocrStatus(){const el=$("#ocrstat");if(!el)return;try{const j=await (await fetch("/api/ocr",{cache:"no-store"})).json();el.innerHTML=j.configured?`Cloud reader <b style="color:var(--ok)">active</b> · key: <b>${esc(j.owner)}</b>. On-device reader is the offline fallback.`:`Cloud reader <b style="color:var(--no)">not configured</b> — ANTHROPIC_API_KEY missing in Vercel. Only the on-device reader will run.`;}catch(e){el.textContent="Cloud reader unreachable from here (no /api on this host). On-device reader only.";}}
 function focusSearch(){const i=$("main input");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}}
 async function openRec(id){R=await DB.get(id);nav("rec");}
 async function delRec(id){if(!confirm("Delete this record from this device? If it has synced, the copy on the server stays."))return;await DB.del(id);toast("Deleted");nav("records");}
@@ -260,7 +262,7 @@ function renderCapture(){const app=$("#app");
     <div class="row"><div><label>Class</label><input id="f_cls" value="${esc(R.cls)}" placeholder="C / P / etc"></div><div><label>Age</label><input value="${a??""}" readonly></div></div>
     <label>Address</label><input id="f_addr" value="${esc(R.address)}">
     <div id="flags">${fl.map(f=>`<span class="flag ${f.k}">${f.t}</span>`).join("")}</div>
-    ${R.ocrText?`<details style="margin-top:10px" ${score(R.ocrText)<40?"open":""}><summary class="hint">Raw text from the reader</summary><pre class="mono" style="white-space:pre-wrap">${esc(R.ocrText)}</pre></details>`:""}</div>
+    ${R.ocrText?`<details style="margin-top:10px" ${R.ocrSource!=="cloud"?"open":""}><summary class="hint">${R.ocrSource==="cloud"?"Reader notes":"Raw text from the reader"}</summary><pre class="mono" style="white-space:pre-wrap">${esc(R.ocrText)}</pre></details>`:""}</div>
     <div class="foot"><button class="btn ghost" onclick="STEP=0;render()">Back</button><button class="btn chrome" onclick="saveConfirm()">Confirm</button></div>`;}
   else if(STEP===2){const a=age(R.dob);const needG=a!==null&&a<SET.guardianUnder;app.innerHTML=stepbar(2,"Contact")+`<div class="card">
     <label>Mobile</label><input id="f_phone" type="tel" inputmode="tel" value="${esc(R.phone)}"><label>Email</label><input id="f_email" type="email" inputmode="email" value="${esc(R.email)}">
@@ -282,7 +284,10 @@ function renderCapture(){const app=$("#app");
   setTimeout(wireCapture,0);
 }
 function wireCapture(){const lf=$("#licfile");if(lf)lf.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.licenceImg=await fileToImage(f,2200);$("#licbox").innerHTML=`<img src="${R.licenceImg}">`;$("#ocr").style.display="flex";
-    try{const text=await readLicence(R.licenceImg);R.ocrText=text;Object.assign(R,Object.fromEntries(Object.entries(parseLicence(text)).filter(([k,v])=>v)));if(score(text)<40)toast("Poor read — check every field, or retake flat with no glare",4000);}catch(err){console.error(err);toast("Reader failed — type the details in");}
+    let cloud=null;
+    if(navigator.onLine){try{const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),25000);const rs=await fetch("/api/ocr",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:R.licenceImg}),signal:ctl.signal});clearTimeout(tm);const j=await rs.json();if(j.ok&&j.fields)cloud=j;else console.warn("cloud reader",j.error);}catch(e){console.warn("cloud reader",e);}}
+    if(cloud){const f=cloud.fields;["first","last","dob","expiry","number","state","cls","address"].forEach(k=>{if(f[k])R[k]=String(f[k]).trim();});R.first=R.first.toUpperCase();R.last=R.last.toUpperCase();R.ocrText="RACERS reader ("+(f.confidence||"?")+" confidence"+(f.digital?", digital licence":"")+")"+(f.notes?"\nCheck: "+f.notes:"");R.ocrSource="cloud";if(f.confidence==="low")toast("Low confidence read — check every field",4000);else if(f.notes)toast("Check: "+f.notes,4000);}
+    else{try{const text=await readLicence(R.licenceImg);R.ocrText=text;R.ocrSource="device";Object.assign(R,Object.fromEntries(Object.entries(parseLicence(text)).filter(([k,v])=>v)));toast(navigator.onLine?"Cloud reader unavailable — used on-device reader, check every field":"Offline — used on-device reader, check every field",4000);}catch(err){console.error(err);toast("Reader failed — type the details in");}}
     STEP=1;render();};
   const ff=$("#facefile");if(ff)ff.onchange=async e=>{const f=e.target.files[0];if(!f)return;R.photo=await fileToImage(f,900);render();};}
 function cancelCap(){if(confirm("Cancel this sign-on?"))nav("home");}
