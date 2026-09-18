@@ -21,6 +21,7 @@ const PROMPT = `You are reading photos of an Australian driver licence (physical
 }
 Rules: if a field is not legible leave it empty rather than guessing. Dates on Australian licences are day-first. Do not include any text outside the JSON.`;
 
+import { user, eventByCode } from "./_lib.js";
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const key = process.env.ANTHROPIC_API_KEY;
@@ -29,6 +30,8 @@ export default async function handler(req, res) {
   }
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST only" });
   if (!key) return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY not set in Vercel" });
+  const u = await user(req).catch(() => null);
+  if (!u) { const ev = await eventByCode((req.body || {}).event_code).catch(() => null); if (!ev || ev.status !== "open") return res.status(401).json({ ok: false, error: "Login or open event code required" }); }
 
   const RE = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/;
   const m = RE.exec((req.body && req.body.image) || "");
