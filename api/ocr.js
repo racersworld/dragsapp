@@ -1,11 +1,11 @@
 // RACERS Sign-On — licence reader endpoint.
-// POST { image: "data:image/jpeg;base64,..." }  ->  { ok, fields, raw }
+// POST { image: "data:image/jpeg;base64,...", back?: "data:..." }  ->  { ok, fields, raw }
 // GET                                          ->  { ok, configured, owner }
 // The Anthropic key lives in Vercel env (ANTHROPIC_API_KEY) and never reaches the browser.
 
 const MODEL = "claude-sonnet-4-6";
 
-const PROMPT = `You are reading a photo of an Australian driver licence (physical card or a digital licence shown on a phone screen). Extract the fields and reply with ONLY a JSON object, no prose, no markdown:
+const PROMPT = `You are reading photos of an Australian driver licence (physical card or a digital licence shown on a phone screen). The first image is the front; if a second image is supplied it is the back of the card, which on Queensland licences carries the address. Use both. Extract the fields and reply with ONLY a JSON object, no prose, no markdown:
 {
  "first": "given name(s) in UPPERCASE or empty string",
  "last": "family name in UPPERCASE or empty string",
@@ -30,9 +30,13 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST only" });
   if (!key) return res.status(503).json({ ok: false, error: "ANTHROPIC_API_KEY not set in Vercel" });
 
-  let image = (req.body && req.body.image) || "";
-  const m = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(image);
+  const RE = /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/;
+  const m = RE.exec((req.body && req.body.image) || "");
   if (!m) return res.status(400).json({ ok: false, error: "image must be a base64 data URL (jpeg/png/webp)" });
+  const mb = RE.exec((req.body && req.body.back) || "");
+  const content = [{ type: "image", source: { type: "base64", media_type: m[1], data: m[2] } }];
+  if (mb) content.push({ type: "image", source: { type: "base64", media_type: mb[1], data: mb[2] } });
+  content.push({ type: "text", text: PROMPT });
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -40,10 +44,7 @@ export default async function handler(req, res) {
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: MODEL, max_tokens: 600,
-        messages: [{ role: "user", content: [
-          { type: "image", source: { type: "base64", media_type: m[1], data: m[2] } },
-          { type: "text", text: PROMPT }
-        ]}]
+        messages: [{ role: "user", content }]
       })
     });
     const data = await r.json();
