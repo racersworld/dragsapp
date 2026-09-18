@@ -12,8 +12,9 @@ export default async function handler(req, res) {
         const { kiosk_pin, created_by, ...pub } = e;
         return json(res, 200, { ok: true, event: pub });
       }
-      const u = await require(req, res, "staff"); if (!u) return;
+      const u = await require(req, res, "event_staff"); if (!u) return;
       const rows = await db(`events?select=*&order=created_at.desc`);
+      if (u.role === "event_staff") return json(res, 200, { ok: true, events: rows.filter(e => e.id === u.event_id && e.status === "open").map(({ kiosk_pin, ...e }) => e) });
       return json(res, 200, { ok: true, events: u.role === "staff" ? rows.filter(e => e.status === "open").map(({ kiosk_pin, ...e }) => e) : rows });
     }
     if (req.method === "POST") {

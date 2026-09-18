@@ -1,4 +1,4 @@
-import { json, bad, db, user, putImage, audit, eventByCode, token } from "./_lib.js";
+import { json, bad, db, user, putImage, audit, eventByCode, token, scoped } from "./_lib.js";
 // POST a sign-on record (gate, self or kiosk). Images arrive as data URLs and go to storage.
 // gate (logged-in staff): result = signed immediately, approved_by = staff.
 // self / kiosk (no login): result = pending until a gate scan approves it. Needs a valid open event code.
@@ -12,6 +12,7 @@ export default async function handler(req, res) {
     const ev = b.event_id ? (await db(`events?id=eq.${b.event_id}&select=*`))[0] : await eventByCode(b.event_code);
     if (!ev) return bad(res, "Unknown event", 404);
     if (ev.status !== "open" && !u) return bad(res, "Event not open", 403);
+    if (u && !scoped(u, ev.id)) return bad(res, "Not your event", 403);
     if (!b.id || !b.first_name || !b.last_name) return bad(res, "id, first_name, last_name required");
     const id = String(b.id).replace(/[^A-Z0-9\-]/gi, "").slice(0, 40);
     const existing = (await db(`sign_ons?id=eq.${id}&select=id,qr_token,result`))[0];

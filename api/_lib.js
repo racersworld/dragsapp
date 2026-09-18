@@ -2,7 +2,7 @@
 const URL_ = () => (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SVC = () => process.env.SUPABASE_SERVICE_KEY || "";
 const ANON = () => process.env.SUPABASE_ANON_KEY || "";
-export const RANK = { staff: 1, admin: 2, super_admin: 3 };
+export const RANK = { event_staff: 1, staff: 2, admin: 3, super_admin: 4 };
 
 export function json(res, status, body) { res.setHeader("Cache-Control", "no-store"); return res.status(status).json(body); }
 export function bad(res, msg, status = 400) { return json(res, status, { ok: false, error: msg }); }
@@ -28,9 +28,12 @@ export async function user(req) {
   const u = await r.json();
   const p = await db(`profiles?id=eq.${u.id}&select=*`);
   if (!p || !p[0] || !p[0].active) return null;
+  if (p[0].expires_at && new Date(p[0].expires_at) < new Date()) return null;
   return p[0];
 }
-export async function require(req, res, role = "staff") {
+// Event-scoped check: event_staff may only touch their own event.
+export function scoped(u, event_id) { return u.role !== "event_staff" || !event_id || u.event_id === event_id; }
+export async function require(req, res, role = "event_staff") {
   const u = await user(req);
   if (!u) { bad(res, "Login required", 401); return null; }
   if (RANK[u.role] < RANK[role]) { bad(res, "Not allowed", 403); return null; }
