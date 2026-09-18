@@ -4,17 +4,15 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return bad(res, "POST only", 405);
   try {
     const u = await require(req, res, "event_staff"); if (!u) return;
-    const { id, action, reason, digital_verified } = req.body || {};
+    const { id, action, reason } = req.body || {};
     const r = (await db(`sign_ons?id=eq.${id}&select=id,event_id,result,signed_at,flags`))[0];
     if (!r) return bad(res, "Record not found", 404);
     if (!scoped(u, r.event_id)) return bad(res, "Not your event", 403);
     if (action === "approve") {
       if (!r.signed_at) return bad(res, "Waiver not signed — cannot approve");
       if (r.result === "signed") return json(res, 200, { ok: true, already: true, record: r });
-      const flags = Array.isArray(r.flags) ? r.flags.filter(f => !/Digital licence verified/.test(f.t)) : [];
-      if (digital_verified) flags.push({ k: "ok", t: "Digital licence verified (QLD app) by " + (u.name || u.email) });
-      const out = await db(`sign_ons?id=eq.${id}`, { method: "PATCH", body: { result: "signed", approved_at: new Date().toISOString(), approved_by: u.id, refusal_reason: null, flags } });
-      await audit(u.id, "approve", id, r.event_id, { digital_verified: !!digital_verified });
+      const out = await db(`sign_ons?id=eq.${id}`, { method: "PATCH", body: { result: "signed", approved_at: new Date().toISOString(), approved_by: u.id, refusal_reason: null } });
+      await audit(u.id, "approve", id, r.event_id, {});
       return json(res, 200, { ok: true, record: out[0] });
     }
     if (action === "refuse") {
