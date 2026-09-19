@@ -90,8 +90,9 @@ const Q=new URLSearchParams(location.search);
 const MODE=Q.get("kiosk")?"kiosk":Q.get("e")?"self":"staff";
 const PUBCODE=(Q.get("kiosk")||Q.get("e")||"").toUpperCase();
 if(MODE==="kiosk")document.body.classList.add("kiosk");
-const DB={db:null,open(){return new Promise((res,rej)=>{const r=indexedDB.open("racers-signon-v2",1);r.onupgradeneeded=e=>{const d=e.target.result;["records","manifest","kv","approvals"].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,n==="kv"?undefined:{keyPath:"id"});});};r.onsuccess=e=>{DB.db=e.target.result;res();};r.onerror=rej;});},
-  tx(st,mode,fn){return new Promise((res,rej)=>{const t=DB.db.transaction(st,mode);const q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result!==undefined?q.result:undefined);t.onerror=rej;});},
+const DB={db:null,opening:null,
+  open(){if(DB.db)return Promise.resolve();if(DB.opening)return DB.opening;DB.opening=new Promise((res,rej)=>{const r=indexedDB.open("racers-signon-v2",1);r.onupgradeneeded=e=>{const d=e.target.result;["records","manifest","kv","approvals"].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,n==="kv"?undefined:{keyPath:"id"});});};r.onsuccess=e=>{DB.db=e.target.result;DB.db.onclose=()=>{DB.db=null;};DB.db.onversionchange=()=>{try{DB.db.close();}catch{}DB.db=null;};DB.opening=null;res();};r.onerror=e=>{DB.opening=null;rej(e);};});return DB.opening;},
+  async tx(st,mode,fn,retry=true){await DB.open();try{return await new Promise((res,rej)=>{const t=DB.db.transaction(st,mode);const q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result!==undefined?q.result:undefined);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});}catch(e){if(retry&&/clos|InvalidState/i.test(String(e&&e.message||e))){DB.db=null;return DB.tx(st,mode,fn,false);}throw e;}},
   put:(st,r)=>DB.tx(st,"readwrite",s=>s.put(r)),all:st=>DB.tx(st,"readonly",s=>s.getAll()),get:(st,id)=>DB.tx(st,"readonly",s=>s.get(id)),del:(st,id)=>DB.tx(st,"readwrite",s=>s.delete(id)),clear:st=>DB.tx(st,"readwrite",s=>s.clear()),
   setKV:(k,v)=>DB.tx("kv","readwrite",s=>s.put(v,k)),getKV:k=>DB.tx("kv","readonly",s=>s.get(k))};
 const $=s=>document.querySelector(s);const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -106,6 +107,7 @@ async function anyToImage(file,max){if(file.type==="application/pdf"||/\.pdf$/i.
 async function urlToData(url){try{const b=await (await fetch(url)).blob();return await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b);});}catch{return null;}}
 function updateNet(){const n=$("#net");n.className="net"+(navigator.onLine?"":" off");n.innerHTML="<i></i>"+(navigator.onLine?"Online":"Offline");}
 addEventListener("online",()=>{updateNet();sync();});addEventListener("offline",updateNet);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){DB.open().catch(()=>{});updateNet();}});
 
 /* ============ config, auth, api ============ */
 let CFG={supabaseUrl:"",anonKey:"",ocr:false,ocrOwner:""},SESSION=null,ME=null,EVENTS=[],EV=null,SET={device:""};
