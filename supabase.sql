@@ -100,3 +100,17 @@ alter table sign_ons add column if not exists deleted_by uuid references profile
 alter table sign_ons add column if not exists delete_reason text;
 alter table audit_log drop constraint if exists audit_log_who_fkey;
 alter table audit_log add constraint audit_log_who_fkey foreign key (who) references profiles(id);
+
+-- invite links
+create table if not exists invites (
+  token text primary key,
+  name text not null default '',
+  email text not null,
+  role text not null check (role in ('event_staff','event_admin','admin','super_admin')),
+  event_id uuid references events(id) on delete set null,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at timestamptz, used_by uuid
+);
+alter table invites enable row level security;
