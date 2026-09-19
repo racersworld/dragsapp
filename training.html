@@ -56,11 +56,11 @@ main{padding:18px 16px 190px;max-width:560px;margin:0 auto}
 </style>
 </head>
 <body>
-<div class="top"><div class="b"><img src="logo.png" alt="RACERS"><div><small id="evname">Training · Lakeside Park</small></div></div><span class="tr">TRAINING — NOT LIVE</span><span id="topbtns"></span></div>
+<div class="top"><div class="b"><img src="logo.png" alt="RACERS"><div><small id="evname">Training · Lakeside Park</small></div></div><span class="tr">TRAINING — NOT LIVE</span><span id="topbtns"></span><button onclick="location.href='./'">Back to app</button></div>
 <div id="helpbar"></div>
 <main id="app"></main>
 <div class="toast" id="toast"></div>
-<div class="coach" id="coach" style="display:none"><div class="in"><div class="t" id="c_t"></div><h3 id="c_h"></h3><p id="c_p"></p><div class="bar"><i id="c_bar"></i></div><div class="btns"><button class="btn ghost" onclick="coachSkip()">Skip step</button><button class="btn chrome" id="c_next" onclick="coachNext()" disabled>Next</button><button class="btn ghost" style="margin-left:auto" onclick="exitTraining()">Exit</button></div></div></div>
+<div class="coach" id="coach" style="display:none"><div class="in"><div class="t" id="c_t"></div><h3 id="c_h"></h3><p id="c_p"></p><div class="bar"><i id="c_bar"></i></div><div class="btns"><button class="btn ghost" onclick="coachSkip()">Skip step</button><button class="btn chrome" id="c_next" onclick="coachNext()" disabled>Next</button><button class="btn ghost" style="margin-left:auto" onclick="exitTraining()">Exit track</button></div></div></div>
 <script>
 /* ===== mock data ===== */
 const $=s=>document.querySelector(s);const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
