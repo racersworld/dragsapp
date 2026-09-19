@@ -1,4 +1,4 @@
-import { json, bad, db, user, putImage, audit, eventByCode, token, scoped } from "./_lib.js";
+import { json, bad, db, user, putImage, audit, eventByCode, token, scoped, RANK } from "./_lib.js";
 // POST a sign-on record (gate, self or kiosk). Images arrive as data URLs and go to storage.
 // gate (logged-in staff): result = signed immediately, approved_by = staff.
 // self / kiosk (no login): result = pending until a gate scan approves it. Needs a valid open event code.
@@ -15,7 +15,12 @@ export default async function handler(req, res) {
     if (u && !scoped(u, ev.id)) return bad(res, "Not your event", 403);
     if (!b.id || !b.first_name || !b.last_name) return bad(res, "id, first_name, last_name required");
     const id = String(b.id).replace(/[^A-Z0-9\-]/gi, "").slice(0, 40);
-    const existing = (await db(`sign_ons?id=eq.${id}&select=id,qr_token,result`))[0];
+    const existing = (await db(`sign_ons?id=eq.${id}&select=id,qr_token,result,created_by,source`))[0];
+    if (existing) {
+      const isAdmin = u && RANK[u.role] >= RANK.admin;
+      const owner = u ? existing.created_by === u.id : (existing.created_by == null && existing.result === "pending");
+      if (!isAdmin && !owner) return bad(res, "Record already exists", 409);
+    }
     const qr = existing ? existing.qr_token : token();
     const dir = `${ev.id}/${id}`;
     const paths = {};
