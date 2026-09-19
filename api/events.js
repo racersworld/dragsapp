@@ -21,12 +21,21 @@ export default async function handler(req, res) {
     if (req.method === "POST") {
       const u = await require(req, res, "event_admin"); if (!u) return;
       const b = req.body || {};
-      if (eventScoped(u)) { if (!b.id || !(u.events || []).includes(b.id)) return bad(res, "You can only edit your own event", 403); const cur = (await db(`events?id=eq.${b.id}&select=code`))[0]; b.code = cur.code; }
-      const row = { code: String(b.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12), name: b.name, venue: b.venue || "", starts: b.starts || null, ends: b.ends || null, status: b.status || "open", passenger_min: +b.passenger_min || 16, guardian_under: +b.guardian_under || 18, waiver_version: b.waiver_version || "v1", waiver_text: b.waiver_text || "", kiosk_pin: String(b.kiosk_pin || "2468") };
-      if (!row.code || !row.name) return bad(res, "code and name required");
+      if (eventScoped(u)) { if (!b.id || !(u.events || []).includes(b.id)) return bad(res, "You can only edit your own event", 403); }
+      if (!b.ends && !b.starts) return bad(res, "End date required");
+      const keyDate = b.ends || b.starts;
+      const row = { name: b.name, venue: b.venue || "", starts: b.starts || null, ends: b.ends || null, status: b.status || "open", passenger_min: +b.passenger_min || 16, guardian_under: +b.guardian_under || 18, waiver_version: b.waiver_version || "v1", waiver_text: b.waiver_text || "", kiosk_pin: String(b.kiosk_pin || "2468") };
+      if (!row.name) return bad(res, "name required");
       let out;
       if (b.id) out = await db(`events?id=eq.${b.id}`, { method: "PATCH", body: row });
-      else out = await db("events", { method: "POST", body: { ...row, created_by: u.id } });
+      else {
+        const day = String(keyDate).replace(/-/g, "").slice(2, 8);            // YYMMDD of the event's last day
+        const same = await db(`events?code=like.${day}-%25&select=code`);
+        const n = same.reduce((m, e) => Math.max(m, parseInt(e.code.split("-")[1] || "0", 10)), 0) + 1;
+        if (n > 99) return bad(res, "Too many events on that day");
+        row.code = `${day}-${String(n).padStart(2, "0")}`;
+        out = await db("events", { method: "POST", body: { ...row, created_by: u.id } });
+      }
       return json(res, 200, { ok: true, event: out[0] });
     }
     return bad(res, "Method", 405);
