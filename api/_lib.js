@@ -2,7 +2,8 @@
 const URL_ = () => (process.env.SUPABASE_URL || "").replace(/\/$/, "");
 const SVC = () => process.env.SUPABASE_SERVICE_KEY || "";
 const ANON = () => process.env.SUPABASE_ANON_KEY || "";
-export const RANK = { event_staff: 1, staff: 2, admin: 3, super_admin: 4 };
+export const RANK = { event_staff: 1, event_admin: 2, admin: 3, super_admin: 4, god: 5 };
+export const ROLES = Object.keys(RANK);
 
 export function json(res, status, body) { res.setHeader("Cache-Control", "no-store"); return res.status(status).json(body); }
 export function bad(res, msg, status = 400) { return json(res, status, { ok: false, error: msg }); }
@@ -29,10 +30,13 @@ export async function user(req) {
   const p = await db(`profiles?id=eq.${u.id}&select=*`);
   if (!p || !p[0] || !p[0].active) return null;
   if (p[0].expires_at && new Date(p[0].expires_at) < new Date()) return null;
-  return p[0];
+  const me = p[0];
+  if (me.role === "event_staff" || me.role === "event_admin") { const a = await db(`event_assignments?user_id=eq.${me.id}&select=event_id`); me.events = a.map(x => x.event_id); } else me.events = null;
+  return me;
 }
 // Event-scoped check: event_staff may only touch their own event.
-export function scoped(u, event_id) { return u.role !== "event_staff" || !event_id || u.event_id === event_id; }
+export const eventScoped = u => u.role === "event_staff" || u.role === "event_admin";
+export function scoped(u, event_id) { return !eventScoped(u) || !event_id || (u.events || []).includes(event_id); }
 export async function require(req, res, role = "event_staff") {
   const u = await user(req);
   if (!u) { bad(res, "Login required", 401); return null; }

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (!b.email || !b.password || b.password.length < 8) return bad(res, "email and password (8+) required");
     const r = await fetch(`${URL_()}/auth/v1/admin/users`, { method: "POST", headers: { apikey: SVC(), Authorization: `Bearer ${SVC()}`, "Content-Type": "application/json" }, body: JSON.stringify({ email: b.email, password: b.password, email_confirm: true }) });
     const au = await r.json(); if (!r.ok) throw new Error(au.msg || au.message || "auth error");
-    const p = await db("profiles", { method: "POST", body: { id: au.id, email: b.email, name: b.name || "Super admin", role: "super_admin" } });
+    const p = await db("profiles", { method: "POST", body: { id: au.id, email: b.email, name: b.name || "Super admin", role: "god" } });
     return json(res, 200, { ok: true, user: p[0], note: "Now delete BOOTSTRAP_SECRET from Vercel and redeploy." });
   } catch (e) { return bad(res, e.message, 500); }
 }

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     if (!q.event) return bad(res, "event required");
     if (!scoped(u, q.event)) return bad(res, "Not your event", 403);
     let f = `event_id=eq.${q.event}`;
-    if (RANK[u.role] < RANK.admin || q.mine) f += `&created_by=eq.${u.id}`;
+    if (u.role === "event_staff" || q.mine) f += `&created_by=eq.${u.id}`;
     if (q.since) f += `&updated_at=gte.${encodeURIComponent(q.since)}`;
     if (q.q) { const s = encodeURIComponent(`%${q.q}%`); f += `&or=(first_name.ilike.${s},last_name.ilike.${s},licence_number.ilike.${s})`; }
     const rows = await db(`sign_ons?${f}&select=id,event_id,type,source,first_name,last_name,dob,licence_number,state,class,expiry,address,phone,email,guardian_name,guardian_phone,flags,result,refusal_reason,signed_at,approved_at,approved_by,created_by,operator,device,waiver_version,qr_token,photo,licence_img,licence_back,created_at,updated_at&order=created_at.desc&limit=${Math.min(+q.limit || 500, 5000)}`);

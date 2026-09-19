@@ -7,7 +7,7 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   name text not null default '',
-  role text not null default 'staff' check (role in ('event_staff','staff','admin','super_admin')),
+  role text not null default 'staff' check (role in ('event_staff','event_admin','admin','super_admin','god')),
   event_id uuid,                 -- event_staff only: the one event they can work
   expires_at timestamptz,        -- optional login expiry
   created_by uuid,
@@ -76,7 +76,18 @@ create trigger sign_ons_touch before update on sign_ons for each row execute fun
 
 -- migration if profiles already exists from the first version:
 alter table profiles drop constraint if exists profiles_role_check;
-alter table profiles add constraint profiles_role_check check (role in ('event_staff','staff','admin','super_admin'));
+alter table profiles add constraint profiles_role_check check (role in ('event_staff','event_admin','admin','super_admin','god'));
 alter table profiles add column if not exists event_id uuid;
 alter table profiles add column if not exists expires_at timestamptz;
 alter table profiles add column if not exists created_by uuid;
+
+-- event assignments (event_admin / event_staff can hold several events)
+create table if not exists event_assignments (
+  user_id uuid not null references profiles(id) on delete cascade,
+  event_id uuid not null references events(id) on delete cascade,
+  assigned_by uuid references profiles(id),
+  created_at timestamptz not null default now(),
+  primary key (user_id, event_id)
+);
+alter table event_assignments enable row level security;
+insert into event_assignments (user_id, event_id) select id, event_id from profiles where event_id is not null on conflict do nothing;
