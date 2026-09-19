@@ -1,0 +1,13 @@
+api/approve.js
+api/assign.js
+api/audit.js
+api/bootstrap.js
+api/config.js
+api/events.js
+api/image.js
+api/invites.js
+api/manifest.js
+api/ocr.js
+api/records.js
+api/submit.js
+api/users.js
