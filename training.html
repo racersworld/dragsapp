@@ -92,7 +92,7 @@ const L={
  gate2:{t:"Lesson 2 · Full gate sign-on",h:"Photograph the licence",p:"Tap Open camera. In training the camera is simulated — it 'photographs' a sample card. Then tap Read licence.",done:()=>STEP===1},
  gate3:{t:"Lesson 2 · Full gate sign-on",h:"Check every field — and the face",p:"The reader filled in the details. Compare them with the actual card — it gets things wrong sometimes. And check the person in front of you against the photo on the licence: same face, same person. Flags show anything to worry about. Tap Confirm.",done:()=>STEP===2},
  gate4:{t:"Lesson 2 · Full gate sign-on",h:"Contact, photo, signature",p:"Mobile is required. Take a clear photo of their face — this is what the next official compares against. Hand them the phone to read and sign the waiver, then tap Sign on.",done:()=>VIEW==="cap"&&STEP===5},
- gate5:{t:"Lesson 2 · Full gate sign-on",h:"Green means go",p:"SIGNED ON. Issue the wristband. If this screen is red, no wristband — ever. Tap Home.",done:()=>VIEW==="home"},
+ gate5:{t:"Lesson 2 · Full gate sign-on",h:"Green means go",p:"SIGNED ON — you hand them a wristband. The app doesn't issue anything; you do, and only on a green screen. Red screen: no wristband, send them to the RACERS desk to sort it out. Tap Home.",done:()=>VIEW==="home"},
  pass1:{t:"Lesson 3 · Passenger under 18",h:"Tap Sign on a PASSENGER",p:"Passengers get a wristband too. This one is 17.",hl:"#b_pass",done:()=>VIEW==="cap"&&R&&R.type==="passenger"},
  pass2:{t:"Lesson 3 · Passenger under 18",h:"Guardian required",p:"Open camera, Read licence, Confirm. Notice the amber flag: under 18 — guardian required. On the contact screen you must enter the parent/guardian, and they sign as well. Under 16 for a passenger is a hard refuse. Finish the sign-on.",done:()=>VIEW==="cap"&&STEP===5},
  pass3:{t:"Lesson 3 · Passenger under 18",h:"Done",p:"Two signatures, one wristband. Tap Home.",done:()=>VIEW==="home"},
@@ -123,7 +123,7 @@ ORDER.event_admin=[...ORDER.event_staff.slice(0,-1),"ea1","ea2","ea3","ea4","ea5
 ORDER.admin=[...ORDER.event_admin.slice(0,-1),"ad1","ad2","ad3","quiz"];
 ORDER.super_admin=[...ORDER.admin.slice(0,-1),"sa1","sa2","quiz"];
 const QUIZ=[
- {q:"The sign-on screen goes red. What do you do?",o:["Issue the wristband anyway if they have a licence","No wristband. Send them to the RACERS desk","Try scanning again until it goes green"],a:1},
+ {q:"The sign-on screen goes red. What do you do?",o:["Hand over the wristband anyway if they have a licence","No wristband. Send them to the RACERS desk to sort it out","Try scanning again until it goes green"],a:1},
  {q:"Someone shows a QR that comes up 'ALREADY USED'. Why?",o:["The phone has lost signal","That pass was already scanned — one pass, one wristband","The camera needs cleaning"],a:1},
  {q:"The reader fills in the licence details. Your job on the confirm screen is to…",o:["Tap Confirm — the reader is always right","Compare every field with the actual licence card","Retype everything"],a:1},
  {q:"A 17-year-old passenger wants to sign on.",o:["Refuse — passengers must be 18","Sign on with a parent/guardian present and signing","Only if they have a P plate"],a:1},

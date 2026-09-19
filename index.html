@@ -77,11 +77,13 @@ main{padding:18px 16px 40px;max-width:560px;margin:0 auto}
 .approve{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bigphoto{width:100%;max-width:300px;aspect-ratio:4/5;object-fit:cover;border-radius:12px;background:var(--line);display:block;margin:0 auto 12px}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.helpbar{position:sticky;top:56px;z-index:4;background:var(--no);color:#fff;padding:12px 16px;box-shadow:0 6px 20px rgba(200,16,46,.35)}.helpbar .in{max-width:560px;margin:0 auto}.helpbar h3{font-size:20px;color:#fff}.helpbar .r{background:rgba(255,255,255,.14);border-radius:8px;padding:10px 12px;margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.helpbar .r b{font-size:16px}.helpbar .r small{display:block;opacity:.9}.helpbar .btn{width:auto;padding:8px 12px;font-size:14px;background:#fff;color:var(--no)}
 .kiosk main{max-width:760px;font-size:19px}.kiosk .btn{font-size:22px;padding:20px}.kiosk .top button{display:none}
 </style>
 </head>
 <body>
 <div class="top"><div class="b"><img src="logo.png" alt="RACERS" id="logo"><div><small id="evname">—</small></div></div><div class="net" id="net"><i></i>Online</div><span id="topbtns"></span></div>
+<div id="helpbar"></div>
 <main id="app"></main>
 <div class="toast" id="toast"></div>
 <script>
@@ -157,7 +159,7 @@ async function render(){topButtons();$("#evname").textContent=EV?EV.name+(EV.ven
   if(VIEW==="home"){const today=new Date().toDateString();const t=records.filter(r=>new Date(r.createdAt).toDateString()===today);const q=records.filter(r=>!r.synced).length;const appr=(await DB.all("approvals")).length;const pend=manifest.filter(m=>m.result==="pending").length;
     app.innerHTML=`<div class="stats"><div class="stat"><b>${t.filter(r=>r.type==="driver").length}</b><span>Drivers (this device)</span></div><div class="stat"><b>${t.filter(r=>r.type==="passenger").length}</b><span>Passengers</span></div><div class="stat"><b>${pend}</b><span>Pending approval</span></div></div>
     ${q+appr?`<div class="alert warn">${q+appr} item${q+appr>1?"s":""} queued on this device — will sync when online.</div>`:""}
-    <div class="big"><button class="btn" onclick="startScan()">SCAN a QR pass</button><button class="btn chrome" onclick="start('driver')">Sign on a DRIVER</button><button class="btn" onclick="start('passenger')">Sign on a PASSENGER</button></div>
+    <div class="big"><button class="btn" onclick="startScan()">SCAN a QR pass</button><button class="btn chrome" onclick="start('driver')">Sign on a DRIVER</button><button class="btn" onclick="start('passenger')">Sign on a PASSENGER</button><button class="btn ghost" style="border-color:var(--no);color:var(--no);padding:14px" onclick="getHelp(null,null)">Get help at this desk</button></div>
     <div class="card"><h2 style="font-size:18px">Self sign-on link for this event</h2><input readonly value="${location.origin}/?e=${esc(EV.code)}" onclick="this.select()"><p class="hint" style="margin-top:6px">Kiosk mode: <span class="mono">${location.origin}/?kiosk=${esc(EV.code)}</span></p><p class="hint">Logged in as ${esc(ME.name||ME.email)} (${roleName(ME.role)}) · device ${esc(SET.device)}</p></div>`;}
   else if(VIEW==="scan"){app.innerHTML=`<div class="imgbox sq"><video id="scanvid" playsinline muted autoplay></video><div class="ret"></div></div><p class="hint" style="text-align:center;margin:10px 0">Point at the pass QR</p><label>Or type the code / search name</label><input id="scan_q" placeholder="Code, name or licence no." oninput="scanSearch(this.value)"><div id="scanlist" class="list" style="margin-top:8px"></div><div class="big"><button class="btn ghost" onclick="nav('home')">Cancel</button></div>`;startVideo();}
   else if(VIEW==="approve"){const m=R;const fl=(m.flags||[]).map(f=>`<span class="flag ${f.k}">${esc(f.t)}</span>`).join("");const hard=(m.flags||[]).some(f=>f.k==="no");
@@ -167,7 +169,7 @@ async function render(){topButtons();$("#evname").textContent=EV?EV.name+(EV.ven
     ${m.licenceData||m.licence_img_url?`<details style="margin-top:10px"><summary class="hint">Licence image</summary><img src="${m.licenceData||m.licence_img_url}" style="width:100%;border-radius:8px;margin-top:8px"></details>`:""}
     <p class="hint" style="margin-top:12px">Compare the photo above with the person in front of you and with the photo on their licence card. Three faces, one person. Then approve.</p></div>
     ${used?"":`<div class="approve"><button class="btn no" onclick="decide('refuse')">Refuse</button><button class="btn ok" ${m.signed_at?"":"disabled"} onclick="decide('approve')">Approve · wristband</button></div>`}
-    <div class="big"><button class="btn ghost" onclick="nav('home')">Back</button></div>`;}
+    <div class="big"><button class="btn ghost" onclick="nav('home')">Back</button><button class="btn ghost" style="border-color:var(--no);color:var(--no)" onclick="getHelp('${esc(m.id)}','${esc(m.first_name)} ${esc(m.last_name)}')">Get help</button></div>`;}
   else if(VIEW==="cap")renderCapture();
   else if(VIEW==="records"){const q=(window._q||"").toLowerCase();let rows=[];try{if(navigator.onLine){const j=await api(`/api/records?event=${EV.id}${q?"&q="+encodeURIComponent(q):""}${window._showDel?"&deleted=1":""}`);rows=j.records.map(r=>({...r,_srv:true}));}}catch(e){toast("Offline — showing this device only");}
     if(!rows.length)rows=records.filter(r=>r.event_id===EV.id&&(!q||(r.first+" "+r.last+" "+r.number).toLowerCase().includes(q))).map(r=>({id:r.id,first_name:r.first,last_name:r.last,licence_number:r.number,state:r.state,created_at:r.createdAt,type:r.type,result:r.result,source:r.source,_local:true,synced:r.synced}));
@@ -197,7 +199,7 @@ async function acceptInvite(){const pw=$("#i_pass").value;const nm=$("#i_name").
 async function doLogin(){try{await login($("#l_email").value.trim(),$("#l_pass").value);await loadMe();await loadEvents();if(ME&&SCOPED(ME.role)&&EVENTS.length===1){EV=EVENTS[0];await DB.setKV("event",EV);manifest=[];syncManifest();}nav("home");}catch(e){toast(e.message);}}
 async function loadMe(){try{ME=(await api("/api/users?me=1")).user;await DB.setKV("me",ME);}catch(e){ME=await DB.getKV("me");}}
 async function loadEvents(){try{EVENTS=(await api("/api/events")).events;await DB.setKV("events",EVENTS);}catch{EVENTS=(await DB.getKV("events"))||[];}}
-async function pickEvent(id){EV=EVENTS.find(e=>e.id===id);await DB.setKV("event",EV);manifest=(await DB.all("manifest")).filter(m=>m.event_id===EV.id);nav("home");syncManifest();}
+async function pickEvent(id){EV=EVENTS.find(e=>e.id===id);await DB.setKV("event",EV);manifest=(await DB.all("manifest")).filter(m=>m.event_id===EV.id);nav("home");syncManifest();pollHelp();}
 
 /* ============ capture flow (gate / self / kiosk) ============ */
 function start(type){if(!EV){toast("Select an event first");return;}newRecord(type);STEP=0;if(window.Tesseract)getWorker();nav("cap");}
@@ -229,7 +231,7 @@ function renderCapture(){const app=$("#app");const you=MODE!=="staff";
   else if(STEP===5){const ok=R.result==="signed",pend=R.result==="pending";const reasons=R.flags.filter(f=>f.k==="no");
     app.innerHTML=`<div class="done ${ok?"ok":pend?"pend":"no"}"><div class="ic">${ok||pend?`<svg viewBox="0 0 24 24" fill="none" stroke="${ok?"#1E8E5A":"#E8891D"}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>`:`<svg viewBox="0 0 24 24" fill="none" stroke="#C8102E" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`}</div><h1>${ok?"SIGNED ON":pend?"YOU'RE REGISTERED":"REFUSED"}</h1><p>${esc(R.first)} ${esc(R.last)}</p>
     ${ok?`<small>${R.type==="passenger"?"Issue passenger wristband":"Issue wristband"}</small><div class="id">Record ${R.id}</div>`:pend?`<div class="qrwrap" style="margin-top:14px;width:100%"><div class="shot">📸 SCREENSHOT THIS SCREEN NOW<small>You need this QR code to get track access.</small></div><div class="code" id="qrcode"></div><div class="mono">${esc(R.id)}</div><div style="font-weight:700;margin-top:4px">${esc(R.first)} ${esc(R.last)} · ${R.type}</div>${R.qr_token?`<button class="btn sm" style="margin-top:8px" onclick="savePass()">Save pass to my phone</button>`:`<div class="hint" style="color:var(--warn)">No signal — your pass will finish when your phone reconnects. Keep this page open, or give your name at the gate.</div>`}</div><small style="margin-top:12px;display:block">Bring your licence. A parent/guardian must be with you if you're under ${GUARD()}.</small>`:`<ul>${reasons.map(f=>`<li>${esc(f.t)}</li>`).join("")||"<li>Refused by operator</li>"}</ul>`}</div>
-    <div class="big">${MODE==="staff"?`<button class="btn chrome" onclick="start('${R.type}')">Next ${R.type}</button><button class="btn ghost" onclick="nav('home')">Home</button>`:MODE==="kiosk"?`<button class="btn chrome" onclick="kioskReset()">Done — next person</button>`:`<button class="btn ghost" onclick="location.reload()">Register another person</button>`}</div>`;
+    <div class="big">${MODE==="staff"?`<button class="btn chrome" onclick="start('${R.type}')">Next ${R.type}</button>${ok?"":`<button class="btn ghost" style="border-color:var(--no);color:var(--no)" onclick="getHelp('${esc(R.id)}','${esc(R.first)} ${esc(R.last)}')">Get help</button>`}<button class="btn ghost" onclick="nav('home')">Home</button>`:MODE==="kiosk"?`<button class="btn chrome" onclick="kioskReset()">Done — next person</button>`:`<button class="btn ghost" onclick="location.reload()">Register another person</button>`}</div>`;
     if(pend&&window.QRCode)setTimeout(()=>{const q=$("#qrcode");if(q&&R.qr_token)new QRCode(q,{text:"RACERS:"+R.qr_token,width:200,height:200,correctLevel:QRCode.CorrectLevel.M});},0);
     if(MODE==="kiosk"){clearTimeout(kioskTimer);kioskTimer=setTimeout(kioskReset,45000);}}
   setTimeout(wireCapture,0);}
@@ -280,6 +282,19 @@ async function decide(action){const id=R.id;let reason=null;if(action==="refuse"
   if(!done){await DB.put("approvals",{...body});toast("Saved on device — will sync");}
   const m=await DB.get("manifest",id);if(m){m.result=action==="approve"?"signed":"refused";m.approved_at=new Date().toISOString();m.refusal_reason=reason;await DB.put("manifest",m);manifest=(await DB.all("manifest")).filter(x=>x.event_id===EV.id);}
   R={first:R.first_name,last:R.last_name,id,type:R.type,result:action==="approve"?"signed":"refused",flags:[{k:"no",t:reason||""}]};STEP=5;VIEW="cap";render();}
+
+/* ============ help requests ============ */
+const HELP_REASONS=["Licence problem","ID does not match photo","Under-age / guardian not present","Waiver not signed","Payment / entry query","Other"];
+let HELP=[],helpTimer=null,helpSeen=new Set();
+async function getHelp(sign_on_id,person){const reason=prompt("Why do you need help?\n\n"+HELP_REASONS.map((r,i)=>(i+1)+". "+r).join("\n")+"\n\nType a number or your own words:");if(reason===null)return;const rs=/^\d$/.test(reason.trim())?HELP_REASONS[+reason.trim()-1]||reason:reason.trim()||"Help needed";
+  try{await api("/api/help",{method:"POST",body:{event_id:EV.id,sign_on_id,person,reason:rs,device:SET.device}});toast("Help requested — an event admin has been notified",4000);pollHelp();}catch(e){toast(navigator.onLine?e.message:"No signal — go and find an event admin",5000);}}
+async function pollHelp(){if(MODE!=="staff"||!ME||!EV||!navigator.onLine)return;try{const j=await api(`/api/help?event=${EV.id}`);HELP=j.requests;renderHelp();}catch(e){}}
+function renderHelp(){const el=$("#helpbar");if(!el)return;if(!HELP.length||!can("event_admin")){el.innerHTML="";return;}
+  const fresh=HELP.filter(h=>!helpSeen.has(h.id));if(fresh.length){fresh.forEach(h=>helpSeen.add(h.id));beep();}
+  el.innerHTML=`<div class="helpbar"><div class="in"><h3>HELP NEEDED · ${HELP.length}</h3>${HELP.map(h=>`<div class="r"><div style="flex:1"><b>${esc(h.reason)}</b><small>${esc(h.raised_name)} · ${esc(h.device||"")} · ${fmtT(h.created_at)}${h.person?" · "+esc(h.person):""}${h.acked_at?` · <b>${esc(h.acked_name)} on the way</b>`:""}</small></div>${h.acked_at?"":`<button class="btn" onclick="helpAct(${h.id},'ack')">On my way</button>`}<button class="btn" onclick="helpAct(${h.id},'resolve')">Resolved</button></div>`).join("")}</div></div>`;}
+async function helpAct(id,action){try{await api("/api/help",{method:"PATCH",body:{id,action}});pollHelp();}catch(e){toast(e.message);}}
+function beep(){try{if(navigator.vibrate)navigator.vibrate([200,100,200]);const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.25;o.start();setTimeout(()=>{o.frequency.value=660;},150);setTimeout(()=>{o.stop();a.close();},400);}catch{}}
+setInterval(pollHelp,20000);
 
 /* ============ records / PDF / export ============ */
 function editRec(){nav("edit");}
@@ -347,7 +362,7 @@ async function renderPublic(){const app=$("#app");if(!EV){app.innerHTML=`<div cl
 /* ============ boot ============ */
 (async()=>{await DB.open();await loadConfig();SET=(await DB.getKV("settings"))||{device:"DEV-"+Math.random().toString(36).slice(2,6).toUpperCase()};await DB.setKV("settings",SET);records=await DB.all("records");
   if(MODE==="staff"){SESSION=await DB.getKV("session");if(SESSION){await refreshSession();await loadMe();if(ME){await loadEvents();EV=await DB.getKV("event");if(SCOPED(ME.role)&&EVENTS.length===1)EV=EVENTS[0];if(EV&&!EVENTS.find(e=>e.id===EV.id)&&navigator.onLine)EV=null;if(EV)manifest=(await DB.all("manifest")).filter(m=>m.event_id===EV.id);}}}
-  render();if(MODE==="staff"&&ME)sync();})();
+  render();if(MODE==="staff"&&ME){sync();pollHelp();}})();
 </script>
 </body>
 </html>

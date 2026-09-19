@@ -114,3 +114,15 @@ create table if not exists invites (
   used_at timestamptz, used_by uuid
 );
 alter table invites enable row level security;
+
+-- help requests from the gate
+create table if not exists help_requests (
+  id bigserial primary key,
+  event_id uuid not null references events(id) on delete cascade,
+  sign_on_id text, person text, reason text not null, note text, device text,
+  raised_by uuid references profiles(id),
+  created_at timestamptz not null default now(),
+  acked_at timestamptz, acked_by uuid references profiles(id),
+  resolved_at timestamptz, resolved_by uuid references profiles(id)
+);
+alter table help_requests enable row level security;

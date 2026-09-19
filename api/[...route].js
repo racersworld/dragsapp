@@ -13,7 +13,8 @@ import ocr from "./_ocr.js";
 import records from "./_records.js";
 import submit from "./_submit.js";
 import users from "./_users.js";
-const ROUTES = { approve, assign, audit, bootstrap, config, events, image, invites, manifest, ocr, records, submit, users };
+import help from "./_help.js";
+const ROUTES = { approve, assign, audit, bootstrap, config, events, image, invites, manifest, ocr, records, submit, users, help };
 export default async function handler(req, res) {
   const r = req.query && req.query.route;
   const name = Array.isArray(r) ? r[0] : (r || String(req.url || "").split("?")[0].split("/").filter(Boolean).pop());
