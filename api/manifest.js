@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     const q = req.query || {};
     if (!q.event) return bad(res, "event required");
     if (!scoped(u, q.event)) return bad(res, "Not your event", 403);
-    let f = `event_id=eq.${q.event}`;
+    let f = `event_id=eq.${q.event}&deleted_at=is.null`;
     if (q.since) f += `&updated_at=gte.${encodeURIComponent(q.since)}`;
     const rows = await db(`sign_ons?${f}&select=id,type,source,first_name,last_name,dob,licence_number,state,class,expiry,flags,result,refusal_reason,signed_at,approved_at,guardian_name,phone,qr_token,photo,licence_img,updated_at,operator,approver:profiles!sign_ons_approved_by_fkey(name)&order=updated_at.desc&limit=5000`);
     for (const r of rows) { if (r.approver && r.approver.name) r.operator = r.approver.name; delete r.approver; }

@@ -5,9 +5,10 @@ export default async function handler(req, res) {
   try {
     const u = await require(req, res, "event_staff"); if (!u) return;
     const { id, action, reason } = req.body || {};
-    const r = (await db(`sign_ons?id=eq.${id}&select=id,event_id,result,signed_at,flags`))[0];
+    const r = (await db(`sign_ons?id=eq.${id}&select=id,event_id,result,signed_at,flags,deleted_at`))[0];
     if (!r) return bad(res, "Record not found", 404);
     if (!scoped(u, r.event_id)) return bad(res, "Not your event", 403);
+    if (r.deleted_at) return bad(res, "Record deleted");
     if (action === "approve") {
       if (!r.signed_at) return bad(res, "Waiver not signed — cannot approve");
       if (r.result === "signed") return json(res, 200, { ok: true, already: true, record: r });

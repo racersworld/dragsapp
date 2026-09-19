@@ -91,3 +91,12 @@ create table if not exists event_assignments (
 );
 alter table event_assignments enable row level security;
 insert into event_assignments (user_id, event_id) select id, event_id from profiles where event_id is not null on conflict do nothing;
+
+-- amendments and soft delete
+alter table sign_ons add column if not exists amended_at timestamptz;
+alter table sign_ons add column if not exists amended_by uuid references profiles(id);
+alter table sign_ons add column if not exists deleted_at timestamptz;
+alter table sign_ons add column if not exists deleted_by uuid references profiles(id);
+alter table sign_ons add column if not exists delete_reason text;
+alter table audit_log drop constraint if exists audit_log_who_fkey;
+alter table audit_log add constraint audit_log_who_fkey foreign key (who) references profiles(id);
