@@ -166,3 +166,9 @@ alter table help_requests add column if not exists lat double precision;
 alter table help_requests add column if not exists lng double precision;
 alter table help_requests add column if not exists accuracy int;
 alter table help_requests add column if not exists station text;
+
+-- presence
+alter table profiles add column if not exists last_seen_at timestamptz;
+alter table profiles add column if not exists last_device text;
+alter table profiles add column if not exists last_station text;
+alter table profiles add column if not exists last_event_id uuid;
