@@ -160,3 +160,9 @@ alter table wristbands enable row level security;
 insert into wristbands (sign_on_id, event_id, day, issued_at, issued_by)
 select id, event_id, (approved_at at time zone 'Australia/Brisbane')::date, approved_at, approved_by from sign_ons
 where result='signed' and approved_at is not null and not exists (select 1 from wristbands w where w.sign_on_id=sign_ons.id);
+
+-- help request location + station name
+alter table help_requests add column if not exists lat double precision;
+alter table help_requests add column if not exists lng double precision;
+alter table help_requests add column if not exists accuracy int;
+alter table help_requests add column if not exists station text;

@@ -16,8 +16,9 @@ export default async function handler(req, res) {
     }
     if (req.method === "POST") {
       if (!b.event_id || !b.reason) return bad(res, "event_id and reason required"); if (!scoped(u, b.event_id)) return bad(res, "Not your event", 403);
-      const out = await db("help_requests", { method: "POST", body: { event_id: b.event_id, sign_on_id: b.sign_on_id || null, person: b.person || null, reason: String(b.reason).slice(0, 80), note: b.note ? String(b.note).slice(0, 300) : null, device: b.device || null, raised_by: u.id } });
-      await audit(u.id, "help_requested", b.sign_on_id || null, b.event_id, { reason: b.reason, device: b.device });
+      const lat = typeof b.lat === "number" ? b.lat : null, lng = typeof b.lng === "number" ? b.lng : null;
+      const out = await db("help_requests", { method: "POST", body: { event_id: b.event_id, sign_on_id: b.sign_on_id || null, person: b.person || null, reason: String(b.reason).slice(0, 80), note: b.note ? String(b.note).slice(0, 300) : null, device: b.device || null, station: b.station ? String(b.station).slice(0, 60) : null, lat, lng, accuracy: b.accuracy ? Math.round(b.accuracy) : null, raised_by: u.id } });
+      await audit(u.id, "help_requested", b.sign_on_id || null, b.event_id, { reason: b.reason, device: b.device, station: b.station || null, lat, lng });
       return json(res, 200, { ok: true, request: out[0] });
     }
     if (req.method === "PATCH") {
