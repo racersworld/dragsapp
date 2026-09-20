@@ -10,8 +10,11 @@ export default async function handler(req, res) {
     if (q.since) f += `&updated_at=gte.${encodeURIComponent(q.since)}`;
     const rows = await db(`sign_ons?${f}&select=id,type,source,first_name,last_name,dob,licence_number,state,class,expiry,flags,result,refusal_reason,signed_at,approved_at,guardian_name,phone,qr_token,photo,licence_photo,licence_img,updated_at,operator,approver:profiles!sign_ons_approved_by_fkey(name)&order=updated_at.desc&limit=5000`);
     for (const r of rows) { if (r.approver && r.approver.name) r.operator = r.approver.name; delete r.approver; }
+    const ids = rows.map(r => r.id);
+    const bands = ids.length ? await db(`wristbands?sign_on_id=in.(${ids.map(encodeURIComponent).join(",")})&voided_at=is.null&select=sign_on_id,day,band_no,kind,issued_at`) : [];
+    const byId = {}; bands.forEach(b => (byId[b.sign_on_id] = byId[b.sign_on_id] || []).push(b));
     const out = [];
-    for (const r of rows) out.push({ ...r, photo_url: await signUrl(r.photo || r.licence_photo, 7200), licence_photo_url: await signUrl(r.licence_photo, 7200), licence_img_url: await signUrl(r.licence_img, 7200) });
+    for (const r of rows) out.push({ ...r, bands: byId[r.id] || [], photo_url: await signUrl(r.photo || r.licence_photo, 7200), licence_photo_url: await signUrl(r.licence_photo, 7200), licence_img_url: await signUrl(r.licence_img, 7200) });
     return json(res, 200, { ok: true, records: out, at: new Date().toISOString() });
   } catch (e) { return bad(res, e.message, 500); }
 }

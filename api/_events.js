@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       if (eventScoped(u)) { if (!b.id || !(u.events || []).includes(b.id)) return bad(res, "You can only edit your own event", 403); }
       if (!b.ends && !b.starts) return bad(res, "End date required");
       const keyDate = b.ends || b.starts;
-      const row = { name: b.name, venue: b.venue || "", starts: b.starts || null, ends: b.ends || null, status: b.status || "open", passenger_min: +b.passenger_min || 16, guardian_under: +b.guardian_under || 18, waiver_version: b.waiver_version || "v1", waiver_text: b.waiver_text || "", kiosk_pin: String(b.kiosk_pin || "2468"), keep_licence_images: !!b.keep_licence_images };
+      const row = { name: b.name, venue: b.venue || "", starts: b.starts || null, ends: b.ends || null, status: b.status || "open", passenger_min: +b.passenger_min || 16, guardian_under: +b.guardian_under || 18, waiver_version: b.waiver_version || "v1", waiver_text: b.waiver_text || "", kiosk_pin: String(b.kiosk_pin || "2468"), keep_licence_images: !!b.keep_licence_images, wristband_mode: b.wristband_mode === "daily" ? "daily" : "event" };
       if (!row.name) return bad(res, "name required");
       let out;
       if (b.id) out = await db(`events?id=eq.${b.id}`, { method: "PATCH", body: row });

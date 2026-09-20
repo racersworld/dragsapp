@@ -138,3 +138,25 @@ alter table sign_ons add column if not exists guardian_licence_img text;
 -- licence image retention
 alter table events add column if not exists keep_licence_images boolean not null default false;
 alter table sign_ons add column if not exists licence_photo text;
+
+-- wristbands: one per event, or one per day; replacements logged
+alter table events add column if not exists wristband_mode text not null default 'event' check (wristband_mode in ('event','daily'));
+create table if not exists wristbands (
+  id bigserial primary key,
+  sign_on_id text not null references sign_ons(id) on delete cascade,
+  event_id uuid not null references events(id) on delete cascade,
+  day date not null,
+  band_no text,
+  kind text not null default 'initial' check (kind in ('initial','replacement')),
+  reason text,
+  replaces bigint references wristbands(id),
+  voided_at timestamptz,
+  issued_at timestamptz not null default now(),
+  issued_by uuid references profiles(id)
+);
+create index if not exists wristbands_signon_idx on wristbands(sign_on_id, day);
+alter table wristbands enable row level security;
+-- backfill: existing signed records get an initial band on their approval day
+insert into wristbands (sign_on_id, event_id, day, issued_at, issued_by)
+select id, event_id, (approved_at at time zone 'Australia/Brisbane')::date, approved_at, approved_by from sign_ons
+where result='signed' and approved_at is not null and not exists (select 1 from wristbands w where w.sign_on_id=sign_ons.id);

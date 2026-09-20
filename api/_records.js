@@ -31,9 +31,10 @@ export default async function handler(req, res) {
       if (!r) return bad(res, "Not found", 404);
       if (!scoped(u, r.event_id)) return bad(res, "Not your event", 403);
       if (r.deleted_at && RANK[u.role] < RANK.admin) return bad(res, "Not found", 404);
+      const bands = await db(`wristbands?sign_on_id=eq.${encodeURIComponent(r.id)}&select=*,issuer:profiles!wristbands_issued_by_fkey(name,email)&order=issued_at`);
       const names = await db(`profiles?id=in.(${[r.approved_by, r.amended_by, r.deleted_by, r.created_by].filter(Boolean).join(",") || "00000000-0000-0000-0000-000000000000"})&select=id,name,email`);
       const nm = id => { const p = names.find(x => x.id === id); return p ? (p.name || p.email) : null; };
-      return json(res, 200, { ok: true, record: { ...(await withUrls(r)), approved_by_name: nm(r.approved_by), amended_by_name: nm(r.amended_by), deleted_by_name: nm(r.deleted_by), created_by_name: nm(r.created_by) } });
+      return json(res, 200, { ok: true, record: { ...(await withUrls(r)), bands: bands.map(b => ({ ...b, issued_name: b.issuer ? (b.issuer.name || b.issuer.email) : "", issuer: undefined })), approved_by_name: nm(r.approved_by), amended_by_name: nm(r.amended_by), deleted_by_name: nm(r.deleted_by), created_by_name: nm(r.created_by) } });
     }
     if (!q.event) return bad(res, "event required");
     if (!scoped(u, q.event)) return bad(res, "Not your event", 403);
