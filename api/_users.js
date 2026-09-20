@@ -14,6 +14,7 @@ async function adminAuth(path, method, body) {
 export default async function handler(req, res) {
   try {
     if (req.method === "GET" && (req.query || {}).me) { const u = await require(req, res, "event_staff"); if (!u) return; return json(res, 200, { ok: true, user: u }); }
+    if (req.method === "POST" && (req.body || {}).training) { const u = await require(req, res, "event_staff"); if (!u) return; const t = req.body.training; if (!t.track || typeof t.score !== "number" || t.score < 80) return bad(res, "Not a pass"); const p = await db(`profiles?id=eq.${u.id}`, { method: "PATCH", body: { training_track: String(t.track).slice(0, 30), training_score: Math.round(t.score), training_passed_at: new Date().toISOString() } }); return json(res, 200, { ok: true, user: p[0] }); }
     const u = await require(req, res, "event_admin"); if (!u) return;
     const below = r => RANK[r] < RANK[u.role];
     const scopedRole = r => r === "event_staff" || r === "event_admin";

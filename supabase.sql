@@ -126,3 +126,15 @@ create table if not exists help_requests (
   resolved_at timestamptz, resolved_by uuid references profiles(id)
 );
 alter table help_requests enable row level security;
+
+-- training completion + minors
+alter table profiles add column if not exists training_track text;
+alter table profiles add column if not exists training_score int;
+alter table profiles add column if not exists training_passed_at timestamptz;
+alter table sign_ons add column if not exists no_licence boolean not null default false;
+alter table sign_ons add column if not exists photo_consent boolean;
+alter table sign_ons add column if not exists guardian_licence_img text;
+
+-- licence image retention
+alter table events add column if not exists keep_licence_images boolean not null default false;
+alter table sign_ons add column if not exists licence_photo text;

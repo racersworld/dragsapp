@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const qr = existing ? existing.qr_token : token();
     const dir = `${ev.id}/${id}`;
     const paths = {};
-    for (const k of ["licence_img", "licence_back", "photo", "sig", "guardian_sig"]) {
+    for (const k of ["licence_img", "licence_back", "licence_photo", "photo", "sig", "guardian_sig", "guardian_licence_img"]) {
       if (b[k] && b[k].startsWith("data:")) paths[k] = await putImage(`${dir}/${k}.${b[k].startsWith("data:image/png") ? "png" : "jpg"}`, b[k]);
       else if (existing && b[k] == null) {/* keep */}
     }
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       approved_at: isGate && b.result !== "refused" ? new Date().toISOString() : null, approved_by: isGate ? u.id : null,
       created_by: u ? u.id : null, operator: u ? u.name || u.email : (b.operator || source), device: b.device || null,
       waiver_version: b.waiver_version || ev.waiver_version, waiver_text: b.waiver_text || ev.waiver_text,
-      ocr_source: b.ocr_source || null, ocr_text: b.ocr_text || null, qr_token: qr, ...paths
+      ocr_source: b.ocr_source || null, ocr_text: b.ocr_text || null, qr_token: qr, no_licence: !!b.no_licence, photo_consent: b.photo_consent == null ? null : !!b.photo_consent, ...paths
     };
     const out = existing ? await db(`sign_ons?id=eq.${id}`, { method: "PATCH", body: row }) : await db("sign_ons", { method: "POST", body: row });
     await audit(u ? u.id : null, existing ? "update" : "create", id, ev.id, { source, result: row.result });

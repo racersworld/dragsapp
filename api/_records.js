@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       await audit(u.id, "edit", id, r.event_id, { before, after, reason: b.reason || null });
       return json(res, 200, { ok: true, record: out[0] });
     }
-    const withUrls = async r => ({ ...r, licence_img_url: await signUrl(r.licence_img), licence_back_url: await signUrl(r.licence_back), photo_url: await signUrl(r.photo), sig_url: await signUrl(r.sig), guardian_sig_url: await signUrl(r.guardian_sig) });
+    const withUrls = async r => ({ ...r, licence_img_url: await signUrl(r.licence_img), licence_back_url: await signUrl(r.licence_back), licence_photo_url: await signUrl(r.licence_photo), guardian_licence_url: await signUrl(r.guardian_licence_img), photo_url: await signUrl(r.photo), sig_url: await signUrl(r.sig), guardian_sig_url: await signUrl(r.guardian_sig) });
     if (q.qr || q.id) {
       const r = (await db(`sign_ons?${q.qr ? "qr_token=eq." + encodeURIComponent(q.qr) : "id=eq." + encodeURIComponent(q.id)}&select=*`))[0];
       if (!r) return bad(res, "Not found", 404);

@@ -17,7 +17,8 @@ const PROMPT = `You are reading photos of an Australian driver licence (physical
  "address": "residential address on one line as printed, or empty string",
  "digital": true or false (true if this is a digital licence on a screen),
  "confidence": "high" | "medium" | "low",
- "notes": "anything an official should check, e.g. glare over expiry, or empty string"
+ "notes": "anything an official should check, e.g. glare over expiry, or empty string",
+ "portrait": {"x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0} (the licence holder's photo on the FIRST image, as fractions of image width/height from the top-left; if no photo is visible use null)
 }
 Rules: if a field is not legible leave it empty rather than guessing. Dates on Australian licences are day-first. Do not include any text outside the JSON.`;
 
