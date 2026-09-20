@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     const below = r => RANK[r] < RANK[u.role];
     const scopedRole = r => r === "event_staff" || r === "event_admin";
     if (req.method === "GET") { const all = await db("profiles?select=*&order=created_at"); const asg = await db("event_assignments?select=user_id,event_id"); const byUser = {}; asg.forEach(a => (byUser[a.user_id] = byUser[a.user_id] || []).push(a.event_id));
-      return json(res, 200, { ok: true, users: all.filter(x => below(x.role) || x.id === u.id).map(x => ({ ...x, events: byUser[x.id] || [] })) }); }
+      return json(res, 200, { ok: true, users: all.filter(x => below(x.role) || x.id === u.id || (u.role === "super_admin" && x.role === "god")).map(x => ({ ...x, events: byUser[x.id] || [] })) }); }
     if (req.method === "POST") {
       const b = req.body || {};
       if (!b.email || !b.password || b.password.length < 8) return bad(res, "email and password (8+ chars) required");
