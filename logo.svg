@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 430">
+  <rect width="1800" height="430" fill="none"/>
+  <g transform="translate(24 15) scale(.73)">
+    <defs>
+      <linearGradient id="o" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F28C28"/><stop offset="1" stop-color="#D35400"/></linearGradient>
+    </defs>
+    <path d="M50 110h140l-84 112H18z" fill="#1F2327"/>
+    <path d="M194 110h164L248 252l154 158H258L132 272z" fill="url(#o)"/>
+    <path d="M260 166h82L238 276l91 92h-70l-84-92z" fill="#F7F3EA"/>
+    <path d="M164 316l84 94H136l-52-49z" fill="#B87333"/>
+  </g>
+  <text x="365" y="213" font-family="Inter,Arial,sans-serif" font-size="145" font-style="italic" font-weight="800" fill="#1F2327">Race</text>
+  <text x="720" y="213" font-family="Inter,Arial,sans-serif" font-size="145" font-style="italic" font-weight="800" fill="#D35400">licence</text>
+  <text x="1260" y="213" font-family="Inter,Arial,sans-serif" font-size="145" font-style="italic" font-weight="800" fill="#1F2327">.com</text>
+  <text x="395" y="307" font-family="Inter,Arial,sans-serif" font-size="38" font-weight="600" letter-spacing="12" fill="#1F2327">FAST. CLEAR. TRACK READY.</text>
+</svg>

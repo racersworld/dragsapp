@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F28C28"/>
+      <stop offset="1" stop-color="#D35400"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#D09963"/>
+      <stop offset="1" stop-color="#B87333"/>
+    </linearGradient>
+  </defs>
+  <!-- abstract apex / track mark; intentionally not an R -->
+  <path d="M50 110h140l-84 112H18z" fill="#1F2327"/>
+  <path d="M194 110h164L248 252l154 158H258L132 272z" fill="url(#orange)"/>
+  <path d="M260 166h82L238 276l91 92h-70l-84-92z" fill="#F7F3EA"/>
+  <path d="M164 316l84 94H136l-52-49z" fill="url(#copper)"/>
+</svg>
